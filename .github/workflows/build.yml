@@ -21,16 +21,13 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install YQ
-        run: sudo apt install yq
-
       - name: Get version
         id: version
-        run: echo "::set-output name=version::$(tomlq .package.version Cargo.toml)"
+        run: echo "::set-output name=version::$(grep '^version =' Cargo.toml | sed 's/version = "\(.*\)"/\1/' | head -1)"
 
       - name: Get name
         id: name
-        run: echo "::set-output name=name::$(tomlq .package.name Cargo.toml )"
+        run: echo "::set-output name=name::$(grep '^name =' Cargo.toml | sed 's/name = "\(.*\)"/\1/' | head -1)"
 
       - name: Get changelog
         id: changelog
