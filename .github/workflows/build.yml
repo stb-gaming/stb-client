@@ -67,5 +67,5 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
-        name: ${{ needs.get-info.outputs.name }}-${{ needs.get-info.outputs.version }}_${{ matrix.target }}
+        name: ${{ needs.get-info.outputs.name }}_${{ matrix.target }}
         path: target/release/${{ needs.get-info.outputs.name }}${{ matrix.target == 'windows' && '.exe' || '' }}
