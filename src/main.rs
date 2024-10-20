@@ -2,7 +2,6 @@ use reqwest::blocking::{get, Response};
 use serde::Deserialize;
 use std::{
     env::args,
-    fmt::format,
     fs::{create_dir_all, File},
     path::Path,
 };
@@ -47,7 +46,7 @@ fn get_game_list() -> Vec<Game> {
 fn download_game(game: &Game, out: &str) {
     let path = Path::new(out);
     if !std::fs::exists(path).expect("Unable to find out if file exists") {
-        create_dir_all(path);
+        let _ = create_dir_all(path);
         for file_url in &game.files {
             let file_name = Path::new(file_url).file_name().unwrap().to_str().unwrap();
             let file_path = path.join(file_name);
