@@ -2,19 +2,65 @@ name: Build
 on:
   push:
     branches:
-      - develop
+      - feature/github-actions
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  get-info:
+    name: Get Info about stuff
     runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.name.outputs.name }}
+      version: ${{ steps.version.outputs.version }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
 
+      - name: Install YQ
+        run: sudo apt install yq
+
+      - name: Get version
+        id: version
+        run: echo "::set-output name=version::$(tomlq .package.version Cargo.toml)"
+
+      - name: Get name
+        id: name
+        run: echo "::set-output name=name::$(tomlq .package.name Cargo.toml )"
+
+      - name: Get changelog
+        id: changelog
+        run: |
+          latest_tag=`git describe --tags --abbrev=0 2>/dev/null || echo HEAD`
+          changelog=`git log --oneline $latest_tag`
+          echo "::set-output name=changelog::$changelog"
+  test:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
     - name: Run tests
       run: cargo test --verbose
+  build:
+    runs-on: ubuntu-latest
+    needs: get-info
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+    - name: Build 
+      run: cargo build --verbose --release
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ needs.get-info.outputs.name }}-linux
+        path: target/release

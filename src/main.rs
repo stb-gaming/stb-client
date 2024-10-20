@@ -88,6 +88,9 @@ fn main() {
         "a" => {
             println!("yay")
         }
+		"version" => {
+			println!(env!("CARGO_PKG_VERSION"));
+		}
         "download" | "dl" => {
             if args.len() < 3 {
                 print!("{} download (gameid) [out]", args[0]);

@@ -1,6 +1,6 @@
 [package]
 name = "stb-client"
-version = "0.1.0-1-g565bae4"
+version = "0.1.0-2-g46650fe"
 edition = "2021"
 
 [dependencies]
