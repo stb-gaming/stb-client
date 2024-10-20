@@ -48,10 +48,11 @@ jobs:
   build:
     strategy:
         fail-fast: false
-        target:
-            windows
-            macos
-            linux
+        matrix:
+          target:
+            - windows
+            - macos
+            - linux
     runs-on: ${{ matrix.target == 'linux' && 'ubuntu' || matrix.target }}-latest
     name: Build for ${{ matrix.target }}
     needs: get-info
