@@ -23,28 +23,18 @@ jobs:
 
       - name: Get version
         id: version
-        run: echo "::set-output name=version::$(grep '^version =' Cargo.toml | sed 's/version = "\(.*\)"/\1/' | head -1)"
+        run: echo "version=$(grep '^version =' Cargo.toml | sed 's/version = "\(.*\)"/\1/' | head -1)" >> $GITHUB_OUTPUT
 
       - name: Get name
         id: name
-        run: echo "::set-output name=name::$(grep '^name =' Cargo.toml | sed 's/name = "\(.*\)"/\1/' | head -1)"
+        run: echo "name=$(grep '^name =' Cargo.toml | sed 's/name = "\(.*\)"/\1/' | head -1)" >> $GITHUB_OUTPUT
 
       - name: Get changelog
         id: changelog
         run: |
           latest_tag=`git describe --tags --abbrev=0 2>/dev/null || echo HEAD`
           changelog=`git log --oneline $latest_tag`
-          echo "::set-output name=changelog::$changelog"
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-    - name: Run tests
-      run: cargo test --verbose
+          echo "changelog=$changelog" >> $GITHUB_OUTPUT
   build:
     strategy:
         fail-fast: false
@@ -67,5 +57,59 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
-        name: ${{ needs.get-info.outputs.name }}_${{ matrix.target }}
-        path: target/release/${{ needs.get-info.outputs.name }}${{ matrix.target == 'windows' && '.exe' || '' }}
+        name: ${{ matrix.target }}
+        path: target/release
+    - name: Run tests
+      run: cargo test --verbose
+  create_release:
+    needs: [build, get-info, test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+        upload_url: ${{steps.create_release.outputs.upload_url}}
+    steps:
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{needs.get-info.outputs.version}}
+          release_name: ${{needs.get-info.outputs.name}} ${{needs.get-info.outputs.version}}
+          body: ${{needs.get-info.outputs.changelog}}
+          draft: false
+          prerelease: ${{ github.ref != 'refs/heads/master' }}
+  upload-to-release:
+    needs: [create_release,get-info]
+    runs-on: ubuntu-latest
+    strategy:
+        fail-fast: false
+        matrix:
+          target:
+            - windows
+            - macos
+            - linux
+      
+    name: Release for ${{ matrix.target }}
+    steps:
+      - run: mkdir -p target/release
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{matrix.target}}
+          path: target/release
+      - id: mime
+        run: echo "mime=$(xdg-mime query filetype ./target/release/${{ needs.get-info.outputs.name }}${{ matrix.target == 'windows' && '.exe' || '' }})" >> $GITHUB_OUTPUT
+
+      - name: Upload Release for ${{matrix.target}}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: target/release/${{ needs.get-info.outputs.name }}${{ matrix.target == 'windows' && '.exe' || '' }}
+          asset_name: "${{ needs.get-info.outputs.name }}-${{ needs.get-info.outputs.version }}_${{ matrix.target }}${{ matrix.target == 'windows' && '.exe' || '' }}"
+          asset_content_type: ${{steps.mime.outputs.mime}}
+    
+    
