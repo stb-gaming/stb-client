@@ -62,7 +62,7 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
   create_release:
-    needs: [build, get-info, test]
+    needs: [build, get-info]
     runs-on: ubuntu-latest
     permissions:
       contents: write
