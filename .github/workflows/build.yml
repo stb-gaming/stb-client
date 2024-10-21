@@ -1,14 +1,14 @@
 name: Build
 on:
-  push:
-    branches:
-      - feature/github-actions
+  - push
+  - pull_request
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   get-info:
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
     name: Get Info about stuff
     runs-on: ubuntu-latest
     outputs:
@@ -36,6 +36,7 @@ jobs:
           changelog=`git log --oneline $latest_tag`
           echo "changelog=$changelog" >> $GITHUB_OUTPUT
   build:
+    if: github.event_name != 'release'
     strategy:
         fail-fast: false
         matrix:
@@ -43,6 +44,7 @@ jobs:
             - windows
             - macos
             - linux
+    continue-on-error: ${{github.ref == 'refs/heads/develop'}}
     runs-on: ${{ matrix.target == 'linux' && 'ubuntu' || matrix.target }}-latest
     name: Build for ${{ matrix.target }}
     needs: get-info
@@ -55,6 +57,7 @@ jobs:
     - name: Build 
       run: cargo build --verbose --release
     - name: Upload artifact
+      if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
       uses: actions/upload-artifact@v3
       with:
         name: ${{ matrix.target }}
@@ -64,6 +67,7 @@ jobs:
   create_release:
     needs: [build, get-info]
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' && github.event_name != 'release'
     permissions:
       contents: write
     outputs:
